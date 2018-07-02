@@ -1,18 +1,26 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using GrainsLib.StateObjects;
+using MigraDoc.DocumentObjectModel;
+using MigraDoc.DocumentObjectModel.Shapes;
+using MigraDoc.Rendering;
 using Orleans;
 using Orleans.Providers;
 using Orleans.Streams;
+using PdfSharp.Pdf;
 
 namespace GrainsLib.Grains
 {
     [ImplicitStreamSubscription(Consts.FilesStreamNameSpace)]
     [StorageProvider(ProviderName = "DevStore")]
-    public class FilesRecieverGrain : Grain<FilesReciever>, IFilesReciever
+    public class FilesRecieverGrain : Grain<FilesRecieverState>, IFilesReciever
     {
         private IAsyncStream<string> _streamIds;
         private IAsyncStream<byte[]> _streamFiles;
-        
+        Document _document;
+
         public override Task OnActivateAsync()
         {
             var streamProvider = GetStreamProvider(Consts.FilesStreamProvider);
@@ -32,28 +40,39 @@ namespace GrainsLib.Grains
 
         public async Task<bool> GetFile(byte[] file)
         {
-            State.Files.Add(file);
+            AddFileToPdfDocument(file);
+            var doc =RenderPdfDocument();
+            State.Files.Add(doc);
             await WriteStateAsync();
             return true;
         }
 
         public Task SetupFilesReciever(string outDir, string settingsDir)
         {
-            State.SetupFilesReciever(outDir, settingsDir);
+            State.OutDir = outDir;
+
+            _document = new Document();
+            _document.AddSection();
+
             return Task.CompletedTask;
         }
 
-        public Task StartProcessFiles()
+        private void AddFileToPdfDocument(byte[] file)
         {
-            State.StartProcessFiles();
-            return Task.CompletedTask;
+            ((Section)_document.Sections.First).AddPageBreak();
+            var f = "base64:" + Convert.ToBase64String(file);
+            ((Section)_document.Sections.First).Add(new Image(f));
         }
 
-        public Task Stop()
+        private PdfDocument RenderPdfDocument()
         {
-            State.Stop();
-            return Task.CompletedTask;
+            var render = new PdfDocumentRenderer { Document = _document };
+            render.RenderDocument();
+            _document = new Document();
+            _document.AddSection();
+            return render.PdfDocument;
         }
     }
+
 }
     

@@ -6,8 +6,6 @@ namespace GrainsLib.Grains
     {
         Task SetupDirProcessor(string inDir);
         Task StartProcessDir();
-        Task Stop();
-        Task<bool> SaveFileId(string fileId);
-        Task<bool> SaveFile(byte[] file);
+        Task Stop();      
     }
 }

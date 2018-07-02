@@ -91,7 +91,6 @@ namespace FilesRecieverClientHost
 
             var filesReciever = client.GetGrain<IFilesReciever>(Consts.FilesRecGuid);
             await filesReciever.SetupFilesReciever(outDir, settingsDir);
-            await filesReciever.StartProcessFiles();
         }
     }
 }
